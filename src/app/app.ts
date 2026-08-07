@@ -12,6 +12,7 @@ import { ZipService } from './core/zip.service';
 import { ResultUrlManagerService } from './core/result-url-manager.service';
 import { ThemeService } from './core/theme.service';
 import { SeoService } from './core/seo.service';
+import { PdfExtractorService } from './core/pdf-extractor.service';
 import { CompressionSettings, ImageJob } from './models/image-job.model';
 
 import { SuiteNavComponent, SuiteMode } from './features/suite-nav/suite-nav.component';
@@ -563,6 +564,7 @@ export class App implements OnInit, OnDestroy {
     private urlManager: ResultUrlManagerService,
     public themeService: ThemeService,
     private seoService: SeoService,
+    private pdfExtractor: PdfExtractorService,
     private router: Router
   ) {}
 
@@ -808,18 +810,48 @@ export class App implements OnInit, OnDestroy {
   async onExtractPdfToImages(settings: PdfToImageSettings): Promise<void> {
     await this.codecLoader.ensureChunkLoaded('pdfjs');
 
+    const jobId = 'job_extract_' + Math.random().toString(36).substring(2, 9);
     const job: ImageJob = {
-      id: 'job_extract_' + Math.random().toString(36).substring(2, 9),
+      id: jobId,
       type: 'pdf-to-img',
       pdfFile: settings.pdfFile,
       name: settings.pdfFile.name,
       originalSize: settings.pdfFile.size,
-      status: 'queued',
+      status: 'processing',
       outputFormat: settings.outputFormat,
       scale: settings.scale
     };
 
-    this.workerPool.addJob(job);
+    this.workerPool.jobs.update(list => [...list, job]);
+
+    try {
+      const result = await this.pdfExtractor.extractPdfToImages(
+        settings.pdfFile,
+        settings.outputFormat,
+        settings.scale,
+        (progress) => {
+          this.workerPool.jobs.update(list => list.map(j => j.id === jobId ? {
+            ...j,
+            currentRenderingPage: progress.currentPage,
+            totalPages: progress.totalPages
+          } as any : j));
+        }
+      );
+
+      this.workerPool.jobs.update(list => list.map(j => j.id === jobId ? {
+        ...j,
+        status: 'done',
+        renderedPages: result.renderedPages,
+        durationMs: result.durationMs
+      } as any : j));
+    } catch (err: any) {
+      console.error('PDF extraction error:', err);
+      this.workerPool.jobs.update(list => list.map(j => j.id === jobId ? {
+        ...j,
+        status: 'error',
+        errorMessage: err.message || 'PDF extraction failed'
+      } as any : j));
+    }
   }
 
   onDownloadSingle(job: ImageJob): void {
