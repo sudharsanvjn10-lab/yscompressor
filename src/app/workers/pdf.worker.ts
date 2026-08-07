@@ -11,14 +11,16 @@ let pdfjsWorkerSrcReady = false;
 async function ensureWorkerSrc(): Promise<void> {
   if (pdfjsWorkerSrcReady) return;
   try {
-    const resp = await fetch('/pdf.worker.min.mjs');
+    const workerUrl = new URL('/pdf.worker.min.mjs', self.location.origin).href;
+    const resp = await fetch(workerUrl);
+    if (!resp.ok) throw new Error(`Worker fetch failed: ${resp.status}`);
     const text = await resp.text();
+    if (text.trim().startsWith('<!')) throw new Error('Worker fetch returned HTML instead of JS');
     const blob = new Blob([text], { type: 'application/javascript' });
     pdfjsLib.GlobalWorkerOptions.workerSrc = URL.createObjectURL(blob);
     pdfjsWorkerSrcReady = true;
   } catch (e) {
-    // Fallback: point directly at the served file
-    pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
+    pdfjsLib.GlobalWorkerOptions.workerSrc = new URL('/pdf.worker.min.mjs', self.location.origin).href;
     pdfjsWorkerSrcReady = true;
   }
 }
@@ -204,7 +206,7 @@ addEventListener('message', async ({ data }: { data: PdfJobMessage }) => {
       await ensureWorkerSrc();
       const pdfTask = pdfjsLib.getDocument({
         data: new Uint8Array(arrayBuf),
-        CanvasFactory: WorkerCanvasFactory as any,
+        CanvasFactory: canvasFactory as any,
         cMapUrl: '/assets/pdfjs/cmaps/',
         cMapPacked: true,
         standardFontDataUrl: '/assets/pdfjs/standard_fonts/',
