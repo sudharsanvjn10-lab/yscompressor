@@ -1,0 +1,10 @@
+# Yazhsiv Conversion Media Suite
+
+> High-performance, client-side batch media suite powered by WebAssembly & Web Workers. 100% private, zero file uploads, zero server transiting.
+
+## Core Feature Capabilities
+- [Batch Image Compressor](https://yazhsivconversion.com/compress): Granular JPEG, PNG, WebP compression with lossless options.
+- [Dimension Resizer & Enhancer](https://yazhsivconversion.com/resize): Custom image scaling, aspect ratio locking, Sharpen, Contrast, and Noise Reduction.
+- [Image to PDF Builder](https://yazhsivconversion.com/img-to-pdf): Drag-and-drop page reordering and multi-page PDF compilation.
+- [PDF to Image Extractor](https://yazhsivconversion.com/pdf-to-img): Render PDF pages to high-DPI PNG or JPEG images using PDF.js.
+- [Community Feedback & Changelog](https://yazhsivconversion.com/feedback): Giscus-powered comments and feature updates.
