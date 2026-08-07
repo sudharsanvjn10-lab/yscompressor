@@ -1,29 +1,7 @@
 /// <reference lib="webworker" />
 import { PDFDocument, PageSizes } from 'pdf-lib';
 import * as pdfjsLib from 'pdfjs-dist';
-
-// PDF.js v6 requires a valid workerSrc — empty string is rejected.
-// We are inside a Web Worker so dynamic import() of node_modules is blocked.
-// Solution: fetch the static /pdf.worker.min.mjs (already copied to /public),
-// create a Blob URL from its text content, and use that as workerSrc.
-// Blob URLs work in all worker contexts without CORS or dynamic import issues.
-let pdfjsWorkerSrcReady = false;
-async function ensureWorkerSrc(): Promise<void> {
-  if (pdfjsWorkerSrcReady) return;
-  try {
-    const workerUrl = new URL('/pdf.worker.min.mjs', self.location.origin).href;
-    const resp = await fetch(workerUrl);
-    if (!resp.ok) throw new Error(`Worker fetch failed: ${resp.status}`);
-    const text = await resp.text();
-    if (text.trim().startsWith('<!')) throw new Error('Worker fetch returned HTML instead of JS');
-    const blob = new Blob([text], { type: 'application/javascript' });
-    pdfjsLib.GlobalWorkerOptions.workerSrc = URL.createObjectURL(blob);
-    pdfjsWorkerSrcReady = true;
-  } catch (e) {
-    pdfjsLib.GlobalWorkerOptions.workerSrc = new URL('/pdf.worker.min.mjs', self.location.origin).href;
-    pdfjsWorkerSrcReady = true;
-  }
-}
+import 'pdfjs-dist/build/pdf.worker.mjs';
 
 
 export interface PdfJobMessage {
@@ -203,7 +181,6 @@ addEventListener('message', async ({ data }: { data: PdfJobMessage }) => {
       // Load PDF document via PDF.js in synchronous (fake-worker) mode.
       // CRITICAL: Pass WorkerCanvasFactory so PDF.js never calls DOMCanvasFactory
       // (which tries document.createElement inside a Worker — causing failures).
-      await ensureWorkerSrc();
       const pdfTask = pdfjsLib.getDocument({
         data: new Uint8Array(arrayBuf),
         CanvasFactory: canvasFactory as any,
