@@ -36,15 +36,24 @@ class WorkerCanvasFactory {
   create(width: number, height: number) {
     const w = Math.max(1, Math.floor(width));
     const h = Math.max(1, Math.floor(height));
-    const canvas = new OffscreenCanvas(w, h);
+    const canvas = new OffscreenCanvas(w, h) as any;
+    if (!canvas.style) {
+      canvas.style = { width: `${w}px`, height: `${h}px` };
+    }
     const context = canvas.getContext('2d');
     return { canvas, context };
   }
 
   reset(canvasAndContext: any, width: number, height: number) {
     if (canvasAndContext && canvasAndContext.canvas) {
-      canvasAndContext.canvas.width = Math.max(1, Math.floor(width));
-      canvasAndContext.canvas.height = Math.max(1, Math.floor(height));
+      const w = Math.max(1, Math.floor(width));
+      const h = Math.max(1, Math.floor(height));
+      canvasAndContext.canvas.width = w;
+      canvasAndContext.canvas.height = h;
+      if (canvasAndContext.canvas.style) {
+        canvasAndContext.canvas.style.width = `${w}px`;
+        canvasAndContext.canvas.style.height = `${h}px`;
+      }
     }
   }
 
@@ -184,9 +193,9 @@ addEventListener('message', async ({ data }: { data: PdfJobMessage }) => {
       const pdfTask = pdfjsLib.getDocument({
         data: new Uint8Array(arrayBuf),
         CanvasFactory: canvasFactory as any,
-        cMapUrl: '/assets/pdfjs/cmaps/',
+        cMapUrl: new URL('/assets/pdfjs/cmaps/', self.location.origin).href,
         cMapPacked: true,
-        standardFontDataUrl: '/assets/pdfjs/standard_fonts/',
+        standardFontDataUrl: new URL('/assets/pdfjs/standard_fonts/', self.location.origin).href,
         useWorkerFetch: false
       });
 
